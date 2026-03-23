@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Records</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="page-shell">
+        <header class="topbar">
+            <div>
+                <h1>Student Records</h1>
+                <p class="subtitle">Click a student to view attendance percentage and totals.</p>
+            </div>
+            <nav class="top-actions">
+                <a class="nav-link" href="{{ url_for('index') }}">Attendance</a>
+                <a class="nav-link secondary" href="{{ url_for('records') }}">Records</a>
+            </nav>
+        </header>
+
+        <section class="records-layout">
+            <aside class="panel student-list-panel">
+                <h2>Students</h2>
+
+                {% if students %}
+                    <div class="student-list">
+                        {% for student in students %}
+                            <a
+                                href="{{ url_for('records', student_id=student['id']) }}"
+                                class="student-item {% if selected_student and selected_student['id'] == student['id'] %}active-student{% endif %}"
+                            >
+                                <div class="student-roll">{{ student["roll_no"] }}</div>
+                                <div class="student-name">{{ student["name"] }}</div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <p>No students found.</p>
+                    </div>
+                {% endif %}
+            </aside>
+
+            <main class="panel details-panel">
+                {% if selected_student %}
+                    <div class="detail-header">
+                        <div>
+                            <h2>{{ selected_student["name"] }}</h2>
+                            <p class="muted-text">Roll No: {{ selected_student["roll_no"] }}</p>
+                        </div>
+                        <div class="percentage-badge">{{ percentage }}%</div>
+                    </div>
+
+                    <div class="progress-track">
+                        <div class="progress-fill" data-percent="{{ percentage }}"></div>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <span class="stat-label">Total Classes</span>
+                            <span class="stat-value">{{ selected_student["total_count"] }}</span>
+                        </div>
+                        <div class="stat-card present-card">
+                            <span class="stat-label">Attended</span>
+                            <span class="stat-value">{{ selected_student["present_count"] }}</span>
+                        </div>
+                        <div class="stat-card absent-card">
+                            <span class="stat-label">Absent</span>
+                            <span class="stat-value">{{ selected_student["absent_count"] }}</span>
+                        </div>
+                    </div>
+
+                    <div class="history-panel">
+                        <h3>Recent Attendance</h3>
+                        {% if recent_rows %}
+                            <table class="mini-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Hour</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in recent_rows %}
+                                    <tr>
+                                        <td>{{ row["att_date"] }}</td>
+                                        <td>H{{ row["hour_no"] }}</td>
+                                        <td>
+                                            <span class="mini-status {% if row['status'] == 'Present' %}mini-present{% else %}mini-absent{% endif %}">
+                                                {{ row["status"] }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        {% else %}
+                            <div class="empty-state">
+                                <p>No attendance records for this student yet.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <p>Select a student to view details.</p>
+                    </div>
+                {% endif %}
+            </main>
+        </section>
+    </div>
+
+    <script>
+        document.querySelectorAll(".progress-fill").forEach(function (bar) {
+            const percent = Number(bar.dataset.percent || 0);
+            bar.style.width = percent + "%";
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Attendance</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="page-shell">
+        <header class="topbar">
+            <div>
+                <h1>Student Attendance</h1>
+                <p class="subtitle">Add students, choose a date, and mark 8 hourly attendance slots.</p>
+            </div>
+            <nav class="top-actions">
+                <a class="nav-link" href="{{ url_for('index', date=selected_date) }}">Attendance</a>
+                <a class="nav-link secondary" href="{{ url_for('records') }}">View Records</a>
+            </nav>
+        </header>
+
+        <section class="panel form-panel">
+            <div class="form-card">
+                <h2>Add Student</h2>
+                <form action="{{ url_for('add_student') }}" method="POST" class="inline-form">
+                    <input type="text" name="roll_no" placeholder="Roll Number" required>
+                    <input type="text" name="name" placeholder="Student Name" required>
+                    <button type="submit" class="btn primary">Add Student</button>
+                </form>
+            </div>
+
+            <div class="form-card">
+                <h2>Select Date</h2>
+                <form method="GET" action="{{ url_for('index') }}" class="inline-form">
+                    <input type="date" name="date" value="{{ selected_date }}" required>
+                    <button type="submit" class="btn primary">Load Date</button>
+                </form>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="table-header">
+                <h2>Attendance Table</h2>
+                <span class="date-pill">{{ selected_date }}</span>
+            </div>
+
+            {% if students %}
+            <div class="table-wrap">
+                <table class="attendance-table">
+                    <thead>
+                        <tr>
+                            <th>Roll No</th>
+                            <th>Name</th>
+                            {% for hour in range(1, 9) %}
+                            <th>H{{ hour }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student in students %}
+                        <tr>
+                            <td>{{ student["roll_no"] }}</td>
+                            <td class="name-col">{{ student["name"] }}</td>
+                            {% for hour in range(1, 9) %}
+                                {% set status = attendance_map.get((student["id"], hour), "Mark") %}
+                                {% set status_class = "status-mark" %}
+                                {% if status == "Present" %}
+                                    {% set status_class = "status-present" %}
+                                {% elif status == "Absent" %}
+                                    {% set status_class = "status-absent" %}
+                                {% endif %}
+                                <td>
+                                    <button
+                                        class="mark-btn {{ status_class }}"
+                                        data-student-id="{{ student['id'] }}"
+                                        data-student-name="{{ student['name'] }}"
+                                        data-hour="{{ hour }}"
+                                        data-date="{{ selected_date }}"
+                                        data-status="{{ status }}"
+                                        type="button"
+                                    >
+                                        {{ status }}
+                                    </button>
+                                </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <p>No students added yet. Add a student first.</p>
+            </div>
+            {% endif %}
+        </section>
+    </div>
+
+    <div id="attendanceModal" class="modal hidden">
+        <div class="modal-card">
+            <h3>Mark Attendance</h3>
+            <p id="modalText" class="modal-text"></p>
+            <div class="modal-actions">
+                <button id="presentBtn" class="btn present-btn" type="button">Present</button>
+                <button id="absentBtn" class="btn absent-btn" type="button">Absent</button>
+            </div>
+            <button id="closeModalBtn" class="btn ghost" type="button">Cancel</button>
+        </div>
+    </div>
+
+    <script>
+        const modal = document.getElementById("attendanceModal");
+        const modalText = document.getElementById("modalText");
+        const presentBtn = document.getElementById("presentBtn");
+        const absentBtn = document.getElementById("absentBtn");
+        const closeModalBtn = document.getElementById("closeModalBtn");
+
+        let activeButton = null;
+
+        function openModal(button) {
+            activeButton = button;
+            const studentName = button.dataset.studentName;
+            const hour = button.dataset.hour;
+            const attDate = button.dataset.date;
+
+            modalText.textContent = `${studentName} • ${attDate} • Hour ${hour}`;
+            modal.classList.remove("hidden");
+        }
+
+        function closeModal() {
+            modal.classList.add("hidden");
+            activeButton = null;
+        }
+
+        function applyButtonStyle(button, status) {
+            button.textContent = status;
+            button.dataset.status = status;
+            button.classList.remove("status-mark", "status-present", "status-absent");
+
+            if (status === "Present") {
+                button.classList.add("status-present");
+            } else if (status === "Absent") {
+                button.classList.add("status-absent");
+            } else {
+                button.classList.add("status-mark");
+            }
+        }
+
+        async function saveAttendance(status) {
+            if (!activeButton) return;
+
+            const payload = {
+                student_id: activeButton.dataset.studentId,
+                att_date: activeButton.dataset.date,
+                hour_no: activeButton.dataset.hour,
+                status: status
+            };
+
+            const response = await fetch("{{ url_for('mark_attendance') }}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+
+            if (result.ok) {
+                applyButtonStyle(activeButton, status);
+            }
+
+            closeModal();
+        }
+
+        document.querySelectorAll(".mark-btn").forEach((button) => {
+            button.addEventListener("click", () => openModal(button));
+        });
+
+        presentBtn.addEventListener("click", () => saveAttendance("Present"));
+        absentBtn.addEventListener("click", () => saveAttendance("Absent"));
+        closeModalBtn.addEventListener("click", closeModal);
+
+        modal.addEventListener("click", (event) => {
+            if (event.target === modal) {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>
