@@ -1,9 +1,5 @@
-version: '3.8'
-
 services:
-  attendance-app:
+  web:
     build: .
     ports:
       - "5000:5000"
-    volumes:
-      - ./app:/app

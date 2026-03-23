@@ -3,37 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Attendance</title>
+    <title>Teacher Attendance</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <div class="page-shell">
         <header class="topbar">
             <div>
-                <h1>Student Attendance</h1>
-                <p class="subtitle">Add students, choose a date, and mark 8 hourly attendance slots.</p>
+                <h1>Teacher Attendance</h1>
+                <p class="subtitle">Select one of your assigned classes and mark attendance.</p>
             </div>
             <nav class="top-actions">
-                <a class="nav-link" href="{{ url_for('index', date=selected_date) }}">Attendance</a>
+                <span class="user-pill">Logged in: {{ current_user }} ({{ role }})</span>
                 <a class="nav-link secondary" href="{{ url_for('records') }}">View Records</a>
+                <a class="nav-link danger-link" href="{{ url_for('logout') }}">Logout</a>
             </nav>
         </header>
 
         <section class="panel form-panel">
             <div class="form-card">
-                <h2>Add Student</h2>
-                <form action="{{ url_for('add_student') }}" method="POST" class="inline-form">
-                    <input type="text" name="roll_no" placeholder="Roll Number" required>
-                    <input type="text" name="name" placeholder="Student Name" required>
-                    <button type="submit" class="btn primary">Add Student</button>
-                </form>
-            </div>
+                <h2>Select Class and Date</h2>
+                <form method="GET" action="{{ url_for('teacher_attendance') }}" class="inline-form">
+                    <select name="class_id" required>
+                        {% for c in classes %}
+                            <option value="{{ c['id'] }}" {% if selected_class_id == c['id'] %}selected{% endif %}>
+                                {{ c['class_name'] }}
+                            </option>
+                        {% endfor %}
+                    </select>
 
-            <div class="form-card">
-                <h2>Select Date</h2>
-                <form method="GET" action="{{ url_for('index') }}" class="inline-form">
                     <input type="date" name="date" value="{{ selected_date }}" required>
-                    <button type="submit" class="btn primary">Load Date</button>
+                    <button type="submit" class="btn primary">Load</button>
                 </form>
             </div>
         </section>
@@ -89,9 +89,9 @@
                 </table>
             </div>
             {% else %}
-            <div class="empty-state">
-                <p>No students added yet. Add a student first.</p>
-            </div>
+                <div class="empty-state">
+                    <p>No students found for this class.</p>
+                </div>
             {% endif %}
         </section>
     </div>
@@ -168,6 +168,8 @@
 
             if (result.ok) {
                 applyButtonStyle(activeButton, status);
+            } else {
+                alert(result.error || "Could not save attendance.");
             }
 
             closeModal();

@@ -11,28 +11,49 @@
         <header class="topbar">
             <div>
                 <h1>Student Records</h1>
-                <p class="subtitle">Click a student to view attendance percentage and totals.</p>
+                <p class="subtitle">
+                    {% if role == 'admin' %}
+                        View all student records.
+                    {% elif role == 'teacher' %}
+                        View records of students from your assigned classes.
+                    {% else %}
+                        Your attendance record.
+                    {% endif %}
+                </p>
             </div>
             <nav class="top-actions">
-                <a class="nav-link" href="{{ url_for('index') }}">Attendance</a>
+                <span class="user-pill">Logged in: {{ current_user }} ({{ role }})</span>
+                {% if role == 'admin' %}
+                    <a class="nav-link" href="{{ url_for('admin_dashboard') }}">Admin</a>
+                {% elif role == 'teacher' %}
+                    <a class="nav-link" href="{{ url_for('teacher_attendance') }}">Attendance</a>
+                {% endif %}
                 <a class="nav-link secondary" href="{{ url_for('records') }}">Records</a>
+                <a class="nav-link danger-link" href="{{ url_for('logout') }}">Logout</a>
             </nav>
         </header>
 
         <section class="records-layout">
             <aside class="panel student-list-panel">
-                <h2>Students</h2>
+                <h2>{% if role == 'student' %}Student{% else %}Students{% endif %}</h2>
 
                 {% if students %}
                     <div class="student-list">
                         {% for student in students %}
-                            <a
-                                href="{{ url_for('records', student_id=student['id']) }}"
-                                class="student-item {% if selected_student and selected_student['id'] == student['id'] %}active-student{% endif %}"
-                            >
-                                <div class="student-roll">{{ student["roll_no"] }}</div>
-                                <div class="student-name">{{ student["name"] }}</div>
-                            </a>
+                            {% if role == 'student' %}
+                                <div class="student-item active-student">
+                                    <div class="student-roll">{{ student["roll_no"] }}</div>
+                                    <div class="student-name">{{ student["name"] }}</div>
+                                </div>
+                            {% else %}
+                                <a
+                                    href="{{ url_for('records', student_id=student['id']) }}"
+                                    class="student-item {% if selected_student and selected_student['id'] == student['id'] %}active-student{% endif %}"
+                                >
+                                    <div class="student-roll">{{ student["roll_no"] }}</div>
+                                    <div class="student-name">{{ student["name"] }}</div>
+                                </a>
+                            {% endif %}
                         {% endfor %}
                     </div>
                 {% else %}
@@ -47,7 +68,7 @@
                     <div class="detail-header">
                         <div>
                             <h2>{{ selected_student["name"] }}</h2>
-                            <p class="muted-text">Roll No: {{ selected_student["roll_no"] }}</p>
+                            <p class="muted-text">Roll No: {{ selected_student["roll_no"] }} | Class: {{ selected_student["class_name"] }}</p>
                         </div>
                         <div class="percentage-badge">{{ percentage }}%</div>
                     </div>

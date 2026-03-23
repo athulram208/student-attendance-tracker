@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="page-shell">
+        <header class="topbar">
+            <div>
+                <h1>Admin Dashboard</h1>
+                <p class="subtitle">Manage classes, teachers, students, and class assignments.</p>
+            </div>
+            <nav class="top-actions">
+                <span class="user-pill">Logged in: {{ current_user }} ({{ role }})</span>
+                <a class="nav-link secondary" href="{{ url_for('records') }}">View Records</a>
+                <a class="nav-link danger-link" href="{{ url_for('logout') }}">Logout</a>
+            </nav>
+        </header>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="flash-wrap">
+                    {% for message in messages %}
+                        <div class="flash-message">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <section class="admin-grid">
+            <div class="panel">
+                <h2>Add Class</h2>
+                <form method="POST" action="{{ url_for('add_class') }}" class="stack-form">
+                    <input type="text" name="class_name" placeholder="Class Name" required>
+                    <button type="submit" class="btn primary">Add Class</button>
+                </form>
+            </div>
+
+            <div class="panel">
+                <h2>Add Teacher</h2>
+                <form method="POST" action="{{ url_for('add_teacher') }}" class="stack-form">
+                    <input type="text" name="username" placeholder="Teacher Username" required>
+                    <input type="text" name="password" placeholder="Teacher Password" required>
+                    <button type="submit" class="btn primary">Add Teacher</button>
+                </form>
+            </div>
+
+            <div class="panel">
+                <h2>Add Student</h2>
+                <form method="POST" action="{{ url_for('add_student') }}" class="stack-form">
+                    <input type="text" name="roll_no" placeholder="Roll Number" required>
+                    <input type="text" name="name" placeholder="Student Name" required>
+                    <select name="class_id" required>
+                        <option value="">Select Class</option>
+                        {% for c in classes %}
+                            <option value="{{ c['id'] }}">{{ c['class_name'] }}</option>
+                        {% endfor %}
+                    </select>
+                    <input type="text" name="username" placeholder="Student Username" required>
+                    <input type="text" name="password" placeholder="Student Password" required>
+                    <button type="submit" class="btn primary">Add Student</button>
+                </form>
+            </div>
+
+            <div class="panel">
+                <h2>Assign Teacher to Class</h2>
+                <form method="POST" action="{{ url_for('assign_teacher') }}" class="stack-form">
+                    <select name="teacher_user_id" required>
+                        <option value="">Select Teacher</option>
+                        {% for t in teachers %}
+                            <option value="{{ t['id'] }}">{{ t['username'] }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <select name="class_id" required>
+                        <option value="">Select Class</option>
+                        {% for c in classes %}
+                            <option value="{{ c['id'] }}">{{ c['class_name'] }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <button type="submit" class="btn primary">Assign</button>
+                </form>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2>Teacher-Class Assignments</h2>
+            {% if assignments %}
+                <table class="mini-table">
+                    <thead>
+                        <tr>
+                            <th>Teacher</th>
+                            <th>Class</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in assignments %}
+                        <tr>
+                            <td>{{ row['teacher_name'] }}</td>
+                            <td>{{ row['class_name'] }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="empty-state">
+                    <p>No teacher-class assignments yet.</p>
+                </div>
+            {% endif %}
+        </section>
+
+        <section class="panel">
+            <h2>Students</h2>
+            {% if students %}
+                <table class="mini-table">
+                    <thead>
+                        <tr>
+                            <th>Roll No</th>
+                            <th>Name</th>
+                            <th>Class</th>
+                            <th>Username</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in students %}
+                        <tr>
+                            <td>{{ s['roll_no'] }}</td>
+                            <td>{{ s['name'] }}</td>
+                            <td>{{ s['class_name'] }}</td>
+                            <td>{{ s['username'] }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="empty-state">
+                    <p>No students added yet.</p>
+                </div>
+            {% endif %}
+        </section>
+    </div>
+</body>
+</html>
