@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Attendance System</title>
+    <title>Admin Login - Attendance System</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <div class="login-page">
         <div class="login-card">
-            <h1>Student / Teacher Login</h1>
-            <p class="subtitle center-text">Login to continue</p>
+            <h1>Admin Login</h1>
+            <p class="subtitle center-text">Only admin can login here</p>
 
             {% with messages = get_flashed_messages() %}
                 {% if messages %}
@@ -23,14 +23,20 @@
             {% endwith %}
 
             <form method="POST" class="login-form">
-                <input type="text" name="username" placeholder="Username" required>
-                <input type="password" name="password" placeholder="Password" required>
+                <input type="text" name="username" placeholder="Admin Username" required>
+                <input type="password" name="password" placeholder="Admin Password" required>
                 <button type="submit" class="btn primary full-btn">Login</button>
             </form>
 
             <div style="text-align:center; margin-top:12px;">
-                <a href="{{ url_for('admin_login') }}" class="nav-link secondary">
-                    Admin Login
+                <a href="{{ url_for('forgot_password') }}" class="nav-link secondary">
+                    Forgot Password?
+                </a>
+            </div>
+
+            <div style="text-align:center; margin-top:12px;">
+                <a href="{{ url_for('login') }}" class="nav-link secondary">
+                    Back to Student / Teacher Login
                 </a>
             </div>
         </div>

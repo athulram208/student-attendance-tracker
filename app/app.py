@@ -3,7 +3,12 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 import sqlite3
 import os
+import re
 from datetime import date
+import smtplib
+import random
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 app = Flask(__name__)
 app.secret_key = "attendance-secret-key-change-this"
@@ -11,11 +16,37 @@ app.secret_key = "attendance-secret-key-change-this"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_NAME = os.path.join(BASE_DIR, "students.db")
 
+# EMAIL CONFIG
+MAIL_EMAIL = "athulramthekkedath@gmail.com"
+MAIL_APP_PASSWORD = "uisatwfyzhylgtnw"
+
 
 def get_db():
     conn = sqlite3.connect(DB_NAME)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def send_otp_email(otp):
+    subject = "Admin Password Reset OTP"
+    body = f"Your OTP is: {otp}"
+
+    msg = MIMEMultipart()
+    msg["From"] = MAIL_EMAIL
+    msg["To"] = MAIL_EMAIL
+    msg["Subject"] = subject
+    msg.attach(MIMEText(body, "plain"))
+
+    try:
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(MAIL_EMAIL, MAIL_APP_PASSWORD)
+        server.sendmail(MAIL_EMAIL, MAIL_EMAIL, msg.as_string())
+        server.quit()
+        return True
+    except Exception as e:
+        print("Email error:", e)
+        return False
 
 
 def init_db():
@@ -91,6 +122,18 @@ def init_db():
 init_db()
 
 
+def valid_class_name(name):
+    return bool(re.fullmatch(r"[A-Za-z ]+", name or ""))
+
+
+def valid_student_name(name):
+    return bool(re.fullmatch(r"[A-Za-z ]+", name or ""))
+
+
+def valid_roll_no(roll):
+    return bool(re.fullmatch(r"[A-Za-z0-9]{8}", roll or ""))
+
+
 def login_required(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -105,15 +148,24 @@ def role_required(*roles):
         @wraps(func)
         def wrapper(*args, **kwargs):
             if session.get("role") not in roles:
-                flash("You are not allowed to access that page.")
+                flash("Unauthorized")
                 return redirect(url_for("login"))
             return func(*args, **kwargs)
         return wrapper
     return decorator
 
 
+@app.route("/")
+def home():
+    return redirect(url_for("login"))
+
+
+# STUDENT + TEACHER LOGIN
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    if request.method == "GET":
+        session.clear()
+
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "").strip()
@@ -125,20 +177,50 @@ def login():
         ).fetchone()
         conn.close()
 
+        if user and user["role"] == "admin":
+            flash("Admin must use Admin Login page.")
+            return redirect(url_for("admin_login"))
+
         if user and check_password_hash(user["password_hash"], password):
             session["user_id"] = user["id"]
-            session["username"] = user["username"]
             session["role"] = user["role"]
+            session["username"] = user["username"]
 
-            if user["role"] == "admin":
-                return redirect(url_for("admin_dashboard"))
             if user["role"] == "teacher":
                 return redirect(url_for("teacher_attendance"))
             return redirect(url_for("records"))
 
-        flash("Invalid username or password.")
+        flash("Invalid login")
 
     return render_template("login.html")
+
+
+# ADMIN LOGIN
+@app.route("/admin-login", methods=["GET", "POST"])
+def admin_login():
+    if request.method == "GET":
+        session.clear()
+
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "").strip()
+
+        conn = get_db()
+        user = conn.execute(
+            "SELECT * FROM users WHERE username = ? AND role = 'admin'",
+            (username,)
+        ).fetchone()
+        conn.close()
+
+        if user and check_password_hash(user["password_hash"], password):
+            session["user_id"] = user["id"]
+            session["role"] = user["role"]
+            session["username"] = user["username"]
+            return redirect(url_for("admin_dashboard"))
+
+        flash("Invalid admin login")
+
+    return render_template("admin_login.html")
 
 
 @app.route("/logout")
@@ -147,19 +229,47 @@ def logout():
     return redirect(url_for("login"))
 
 
-@app.route("/")
-def home():
-    if "user_id" not in session:
-        return redirect(url_for("login"))
+# ADMIN OTP
+@app.route("/forgot-password")
+def forgot_password():
+    otp = str(random.randint(100000, 999999))
+    session["otp"] = otp
 
-    if session["role"] == "admin":
-        return redirect(url_for("admin_dashboard"))
-    if session["role"] == "teacher":
-        return redirect(url_for("teacher_attendance"))
-    return redirect(url_for("records"))
+    if send_otp_email(otp):
+        flash("OTP sent to your email")
+    else:
+        flash("Error sending OTP")
+
+    return redirect(url_for("verify_otp"))
 
 
-@app.route("/admin", methods=["GET"])
+@app.route("/verify-otp", methods=["GET", "POST"])
+def verify_otp():
+    if request.method == "POST":
+        entered_otp = request.form.get("otp", "").strip()
+        new_password = request.form.get("password", "").strip()
+
+        if entered_otp != session.get("otp"):
+            flash("Invalid OTP")
+            return redirect(url_for("verify_otp"))
+
+        conn = get_db()
+        conn.execute(
+            "UPDATE users SET password_hash = ? WHERE role = 'admin'",
+            (generate_password_hash(new_password),)
+        )
+        conn.commit()
+        conn.close()
+
+        session.pop("otp", None)
+        flash("Password reset successful")
+        return redirect(url_for("admin_login"))
+
+    return render_template("verify_otp.html")
+
+
+# ADMIN
+@app.route("/admin")
 @login_required
 @role_required("admin")
 def admin_dashboard():
@@ -213,8 +323,8 @@ def admin_dashboard():
 def add_class():
     class_name = request.form.get("class_name", "").strip()
 
-    if not class_name:
-        flash("Class name is required.")
+    if not valid_class_name(class_name):
+        flash("Only alphabets allowed for class name.")
         return redirect(url_for("admin_dashboard"))
 
     conn = get_db()
@@ -239,10 +349,6 @@ def add_class():
 def add_teacher():
     username = request.form.get("username", "").strip()
     password = request.form.get("password", "").strip()
-
-    if not username or not password:
-        flash("Teacher username and password are required.")
-        return redirect(url_for("admin_dashboard"))
 
     conn = get_db()
     try:
@@ -270,8 +376,12 @@ def add_student():
     username = request.form.get("username", "").strip()
     password = request.form.get("password", "").strip()
 
-    if not roll_no or not name or not class_id or not username or not password:
-        flash("All student fields are required.")
+    if not valid_roll_no(roll_no):
+        flash("Roll number must be exactly 8 characters with only letters and numbers.")
+        return redirect(url_for("admin_dashboard"))
+
+    if not valid_student_name(name):
+        flash("Student name must contain only alphabets and spaces.")
         return redirect(url_for("admin_dashboard"))
 
     conn = get_db()
@@ -306,10 +416,6 @@ def assign_teacher():
     teacher_user_id = request.form.get("teacher_user_id", "").strip()
     class_id = request.form.get("class_id", "").strip()
 
-    if not teacher_user_id or not class_id:
-        flash("Teacher and class are required.")
-        return redirect(url_for("admin_dashboard"))
-
     conn = get_db()
     try:
         conn.execute(
@@ -326,6 +432,7 @@ def assign_teacher():
     return redirect(url_for("admin_dashboard"))
 
 
+# TEACHER
 @app.route("/teacher", methods=["GET"])
 @login_required
 @role_required("teacher")
@@ -397,6 +504,9 @@ def mark_attendance():
     if status not in ("Present", "Absent"):
         return jsonify({"ok": False, "error": "Invalid status"}), 400
 
+    if hour_no < 1 or hour_no > 8:
+        return jsonify({"ok": False, "error": "Invalid hour"}), 400
+
     conn = get_db()
 
     allowed = conn.execute("""
@@ -423,6 +533,7 @@ def mark_attendance():
     return jsonify({"ok": True, "status": status})
 
 
+# RECORDS
 @app.route("/records")
 @login_required
 @role_required("admin", "teacher", "student")

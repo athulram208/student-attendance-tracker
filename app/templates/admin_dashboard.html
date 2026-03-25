@@ -34,7 +34,13 @@
             <div class="panel">
                 <h2>Add Class</h2>
                 <form method="POST" action="{{ url_for('add_class') }}" class="stack-form">
-                    <input type="text" name="class_name" placeholder="Class Name" required>
+                    <input 
+                        type="text" 
+                        name="class_name" 
+                        placeholder="Class Name"
+                        pattern="[A-Za-z ]+"
+                        title="Only alphabets and spaces allowed"
+                        required>
                     <button type="submit" class="btn primary">Add Class</button>
                 </form>
             </div>
@@ -43,7 +49,7 @@
                 <h2>Add Teacher</h2>
                 <form method="POST" action="{{ url_for('add_teacher') }}" class="stack-form">
                     <input type="text" name="username" placeholder="Teacher Username" required>
-                    <input type="text" name="password" placeholder="Teacher Password" required>
+                    <input type="password" name="password" placeholder="Teacher Password" required>
                     <button type="submit" class="btn primary">Add Teacher</button>
                 </form>
             </div>
@@ -51,16 +57,40 @@
             <div class="panel">
                 <h2>Add Student</h2>
                 <form method="POST" action="{{ url_for('add_student') }}" class="stack-form">
-                    <input type="text" name="roll_no" placeholder="Roll Number" required>
-                    <input type="text" name="name" placeholder="Student Name" required>
+                    
+                    <!-- Roll Number -->
+                    <input 
+                        type="text" 
+                        name="roll_no" 
+                        placeholder="Roll Number"
+                        maxlength="8"
+                        pattern="[A-Za-z0-9]{8}"
+                        title="Exactly 8 characters, only letters and numbers"
+                        required>
+
+                    <!-- Student Name -->
+                    <input 
+                        type="text" 
+                        name="name" 
+                        placeholder="Student Name"
+                        pattern="[A-Za-z ]+"
+                        title="Only alphabets and spaces allowed"
+                        required>
+
+                    <!-- Class -->
                     <select name="class_id" required>
                         <option value="">Select Class</option>
                         {% for c in classes %}
                             <option value="{{ c['id'] }}">{{ c['class_name'] }}</option>
                         {% endfor %}
                     </select>
+
+                    <!-- Username -->
                     <input type="text" name="username" placeholder="Student Username" required>
-                    <input type="text" name="password" placeholder="Student Password" required>
+
+                    <!-- Password -->
+                    <input type="password" name="password" placeholder="Student Password" required>
+
                     <button type="submit" class="btn primary">Add Student</button>
                 </form>
             </div>
@@ -143,5 +173,21 @@
             {% endif %}
         </section>
     </div>
+
+    <!-- 🔥 Real-time input restriction (no UI change) -->
+    <script>
+    document.querySelectorAll('input[name="class_name"], input[name="name"]').forEach(input => {
+        input.addEventListener("input", () => {
+            input.value = input.value.replace(/[^A-Za-z ]/g, '');
+        });
+    });
+
+    const rollInput = document.querySelector('input[name="roll_no"]');
+    if (rollInput) {
+        rollInput.addEventListener("input", function () {
+            this.value = this.value.replace(/[^A-Za-z0-9]/g, '').slice(0, 8);
+        });
+    }
+    </script>
 </body>
 </html>
